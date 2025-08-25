@@ -1,0 +1,115 @@
+# Menambahkan External Storage ke Container LXC Immich di Proxmox
+
+Dokumentasi ini menjelaskan langkah-langkah menambahkan HDD eksternal ke container LXC yang menjalankan Immich di Proxmox, sehingga Immich dapat langsung menggunakan storage baru tanpa kendala.
+
+---
+
+## Prasyarat
+
+1. Proxmox VE sudah terinstal.
+2. LXC container dengan Immich sudah berjalan.
+3. HDD eksternal sudah terpasang di host Proxmox.
+4. Anda memiliki akses root ke Proxmox host dan LXC container.
+
+---
+
+## 1. Mount HDD di Host Proxmox
+
+1. Periksa device name HDD eksternal:
+
+```bash
+lsblk
+
+    Buat folder mount point di host:
+
+mkdir -p /mnt/data
+
+    Mount HDD ke folder tersebut:
+
+mount /dev/sdb1 /mnt/data
+
+    Pastikan filesystem HDD kompatibel dengan Linux (disarankan ext4). Cek dengan:
+
+blkid /dev/sdb1
+
+    Opsional: agar HDD otomatis ter-mount saat reboot, tambahkan di /etc/fstab:
+
+/dev/sdb1   /mnt/data   ext4   defaults   0 0
+
+2. Bind Mount HDD ke LXC Immich
+
+Agar container bisa mengakses HDD, lakukan bind mount:
+
+pct set <vmid> -mp0 /mnt/data,mp=/mnt/data
+
+Ganti <vmid> dengan ID LXC Immich.
+
+    mp0 adalah opsi mount pertama; Proxmox mendukung beberapa mount point jika perlu.
+
+    mp=/mnt/data menunjukkan mount point di dalam container.
+
+    Catatan: Tidak perlu mount ulang di dalam container, bind mount dari host sudah cukup.
+
+3. Set Permissions Folder Upload
+
+Pastikan folder upload di HDD bisa diakses oleh user Immich:
+
+chown -R immich:immich /mnt/data/upload
+chmod -R 755 /mnt/data/upload
+
+Cek dengan:
+
+ls -ld /mnt/data/upload
+
+4. Update Path Storage Immich
+
+    Masuk ke folder instalasi Immich:
+
+cd /opt/immich
+
+    Edit file .env:
+
+nano .env
+
+    Ubah variable IMMICH_MEDIA_LOCATION ke path HDD:
+
+IMMICH_MEDIA_LOCATION=/mnt/data/upload
+
+    Simpan dan keluar (Ctrl+O, Enter, Ctrl+X).
+
+5. Restart Immich
+
+Jika Immich dijalankan melalui Docker:
+
+cd /opt/immich
+docker compose restart
+
+Jika dijalankan manual via Node/PM2, restart sesuai metode tersebut.
+
+Cek service berjalan lancar:
+
+docker ps      # untuk Docker
+# atau
+ps aux | grep node   # untuk Node
+
+6. Verifikasi
+
+    Periksa isi folder upload di container:
+
+ls -l /mnt/data/upload
+
+    Pastikan semua folder/foto/video muncul di Immich web UI.
+
+    Pastikan Immich dapat menambahkan file baru tanpa error.
+
+7. Tips & Catatan
+
+    Jangan mount HDD di LXC lagi jika sudah menggunakan bind mount dari host.
+
+    Pastikan permissions folder upload sesuai user immich.
+
+    Jika HDD dilepas atau diganti, bind mount dan .env tetap harus diarahkan ke path yang benar.
+
+    Backup .env sebelum melakukan perubahan besar.
+
+Dokumentasi ini memastikan Immich di LXC Proxmox bisa langsung memanfaatkan HDD eksternal dengan lancar dan aman.
