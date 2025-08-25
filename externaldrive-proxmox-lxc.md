@@ -10,6 +10,7 @@ Dokumentasi ini menjelaskan langkah-langkah menambahkan HDD eksternal ke contain
 2. LXC container dengan Immich sudah berjalan
 3. HDD eksternal sudah terpasang di host Proxmox
 4. Anda memiliki akses root ke Proxmox host dan LXC container
+5. **PENTING:** LXC container harus menggunakan **Privileged Access** agar dapat mengakses device eksternal
 
 ---
 
@@ -88,21 +89,19 @@ ls -ld /mnt/data/upload
 
 4. **Simpan dan keluar** (Ctrl+O, Enter, Ctrl+X)
 
-## 5. Restart Immich
+## 5. Restart Container LXC
 
-Jika Immich dijalankan melalui Docker:
+Restart container LXC dari host Proxmox untuk menerapkan perubahan:
+
 ```bash
-cd /opt/immich
-docker compose restart
+pct restart <vmid>
 ```
 
-Jika dijalankan manual via Node/PM2, restart sesuai metode tersebut.
+Ganti `<vmid>` dengan ID container LXC Immich.
 
-Cek service berjalan lancar:
+Tunggu beberapa saat hingga container selesai booting, lalu cek status:
 ```bash
-docker ps      # untuk Docker
-# atau
-ps aux | grep node   # untuk Node
+pct status <vmid>
 ```
 
 ## 6. Verifikasi
@@ -118,6 +117,7 @@ ps aux | grep node   # untuk Node
 
 ## 7. Tips & Catatan
 
+- **WAJIB:** Container LXC harus dalam mode **Privileged** agar bisa mengakses external storage. Jika container unprivileged, ubah dulu di Proxmox GUI: Options > Privileged = Yes, lalu restart container
 - Jangan mount HDD di LXC lagi jika sudah menggunakan bind mount dari host
 - Pastikan permissions folder upload sesuai user immich
 - Jika HDD dilepas atau diganti, bind mount dan .env tetap harus diarahkan ke path yang benar
